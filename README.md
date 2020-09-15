@@ -23,7 +23,7 @@ Required data:
 **Run MEME-chip on peak sequences**  
 `meme-chip -oc meme_out -dna peak_sequences.fasta`  
 
-**Run FIMO on a thaliana genome**  
+**Run FIMO on genome**  
 `fimo --thresh 5e-4 --motif 1 --max-strand --max-stored-scores 1000000 --oc fimo_out meme_out/combined.meme TAIR10_genome.fas`  
 
 **Dimer analysis**  
