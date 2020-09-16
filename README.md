@@ -15,7 +15,7 @@ Required data:
 - Genome of corresponding organism in fasta format  
 <br><br>
 
-## Usage
+## Example  
 
 **Generate peak fasta**  
 `generate_peak_fasta.py -g TAIR10_genome.fas -p chr1-5_GEM_events.narrowPeak`
@@ -30,7 +30,7 @@ Required data:
 `get_dimer_peaks.py -f fimo_out/fimo.tsv -p chr1-5_GEM_events.narrowPeak`  
 
 **Generate shape fimo**  
-`generate_shape_fimo_forward.py`  
+`generate_shape_fimo_forward.py -g TAIR10_genome.fas -f fimo_with_signal_values.tsv`  
 
 **Train regressor**  
 `train_regressor.py`  
