@@ -2,8 +2,8 @@
 A workflow to learn protein-DNA binding specificity from experimental peak data based on DNA shape.  
 <br><br>
 Required software:  
-- MEME-Suite (v5.0 +)  
-- Python (v3.7 +)  
+- MEME-Suite (v5.0+)  
+- Python (v3.7+)  
 
 Required Python modules:  
 - Pandas  
