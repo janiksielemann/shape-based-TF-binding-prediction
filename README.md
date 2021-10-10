@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5559535.svg)](https://doi.org/10.5281/zenodo.5559535)
 # shape-based-TF-binding-prediction
 A workflow to learn protein-DNA binding specificity from experimental peak data based on DNA shape.  
 <br><br>
