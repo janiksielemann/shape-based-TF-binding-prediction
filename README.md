@@ -9,16 +9,17 @@ Required Python modules:
 - Pandas  
 - Numpy  
 - Scikit-learn  
+- SHAP
 
-Required data:  
+Required data (automatically downloaded when running download_source_data.py):  
 - Peak file in ENCODE narrowPeak format  
 - Genome of corresponding organism in fasta format  
 <br><br>
 
-## Example  
+## Example for HY5 
 
 **Generate peak fasta**  
-`generate_peak_fasta.py -g TAIR10_genome.fas -p chr1-5_GEM_events.narrowPeak`
+`generate_peak_fasta.py -g TAIR10_genome.fas -p dap_data_v4/peaks/bZIP_tnt/HY5_colamp_v3a/chr1-5/chr1-5_GEM_events.narrowPeak`
 
 **Run MEME-chip on peak sequences**  
 `meme-chip -oc meme_out -dna peak_sequences.fasta`  
@@ -27,7 +28,7 @@ Required data:
 `fimo --thresh 5e-4 --motif 1 --max-strand --max-stored-scores 1000000 --oc fimo_out meme_out/combined.meme TAIR10_genome.fas`  
 
 **Dimer analysis**  
-`get_dimer_peaks.py -f fimo_out/fimo.tsv -p chr1-5_GEM_events.narrowPeak`  
+`get_dimer_peaks.py -f fimo_out/fimo.tsv -p dap_data_v4/peaks/bZIP_tnt/HY5_colamp_v3a/chr1-5/chr1-5_GEM_events.narrowPeak`  
 
 **Generate shape fimo**  
 `generate_shape_fimo_forward.py -g TAIR10_genome.fas -f fimo_with_signal_values.tsv`  
