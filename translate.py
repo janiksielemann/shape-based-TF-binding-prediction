@@ -1,6 +1,8 @@
 import pandas as pd
 from sklearn import preprocessing
 
+# load query table provided by http://rohslab.usc.edu/DNAshape+/
+
 dict_with_shapes = {
 'index': ['AAAAA', 'AAAAC', 'AAAAG', 'AAAAT', 'AAACA', 'AAACC',
  'AAACG', 'AAACT', 'AAAGA', 'AAAGC', 'AAAGG', 'AAAGT',

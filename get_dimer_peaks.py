@@ -11,6 +11,7 @@ fimo_file = args.fimo
 
 peak_df = pd.read_csv(peak_file, sep="\t", header = None)
 fimo_df = pd.read_csv(fimo_file, sep="\t", comment="#")
+fimo_df["sequence_name"] = fimo_df["sequence_name"].replace({"1":"chr1", "2":"chr2", "3":"chr3", "4":"chr4", "5":"chr5"})
 
 peak_df_without_dimer = peak_df.copy()
 peak_df_with_exactly_one_fimo = peak_df.copy()

@@ -1,14 +1,19 @@
+import matplotlib
+# set non interactive backend so that qsub works
+matplotlib.use('Agg')
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import shap
+import keras
+import tensorflow as tf
 
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import plot_precision_recall_curve
 from sklearn.metrics import mean_squared_error
-from sklearn.ensemble import RandomForestRegressor
 from joblib import dump
 from argparse import ArgumentParser
 
@@ -20,8 +25,6 @@ args = input_.parse_args()
 all_shapes = ['Stagger', 'Rise', 'Opening', 'Buckle', 'MGW', 'Tilt', 'HelT', 'Roll', 'Shear', 'Slide', 'Stretch', 'ProT', 'Shift']
 
 border_length = args.border
-
-print("-- shape values of core motif and " + str(border_length) + " positions upstream and downstream will be considered for training --")
 
 #----- read fimo and peak data, check whether dimer or not, generate learning set ---------
 fimo_tsv_file_without_dimer = "fimo_without_dimer_hits.tsv"
@@ -42,9 +45,6 @@ else:
 
 # remove chloroplast and mitochondrai data
 whole_fimo = whole_fimo.drop(whole_fimo[(whole_fimo["sequence_name"]=="chloroplast") | (whole_fimo["sequence_name"]=="mitochondria")].index)
-
-# chromosome names to lowercase
-whole_fimo["sequence_name"] = whole_fimo["sequence_name"].str.lower()
 
 # generate whole set
 shape_fimo = pd.read_csv("shape_fimo_forward.csv")
@@ -84,24 +84,33 @@ sample_weight_bound = len(processed_shape_fimo.query("binding == 0")) / len(proc
 print("the bound sample weight is", sample_weight_bound)
 sample_weight = np.array([1 if val == 0 else sample_weight_bound for val in y_train])
 
-rf = RandomForestRegressor(random_state=42)
+X_train = X_train.to_numpy()
+X_test = X_test.to_numpy()
+y_train = y_train.to_numpy()
+y_test = y_test.to_numpy()
 
-param_distribs = {
-        'n_estimators': range(10,200,10),
-        'max_features': ['auto', 'sqrt', 'log2'],
-        'max_depth': range(4,12)
-    }
 
-rnd_search = RandomizedSearchCV(rf, param_distributions=param_distribs, n_iter=75, cv=5, scoring='neg_mean_squared_error', verbose=2, random_state=42)
 
-rnd_search.fit(X_train, y_train, sample_weight = sample_weight)
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
 
-rf_regressor = rnd_search.best_estimator_
+np.random.seed(42)
+tf.random.set_seed(42)
 
-dump(rf_regressor, "rf_regressor.joblib")
+model = keras.models.Sequential([
+    keras.layers.Dense(200, activation="relu", input_shape=X_train.shape[1:]),
+    keras.layers.Dense(1)
+])
+model.compile(loss="mean_squared_error", optimizer=keras.optimizers.Adam())
+model.fit(X_train, y_train, epochs=40, validation_split=0.2, batch_size=16)
+mse_test = model.evaluate(X_test, y_test)
+
+model.save('neural_network_model')
+#model = keras.models.load_model('path/to/location')
 
 # --------- PRC whole subset ------------
-y_scores_regressor = rf_regressor.predict(X_shapes)
+y_scores_regressor = model.predict(X_shapes)
 y_true_regressor = processed_shape_fimo["binding"]
 
 precision, recall, _ = precision_recall_curve(y_true_regressor, y_scores_regressor)
@@ -114,12 +123,12 @@ plt.ylim([0.0, 1.05])
 plt.xlim([0.0, 1.0])
 plt.title('Precision-Recall curve\navg precision: {:.4f}'.format(avg_precision_value_regressor))
 #plt.show()
-plt.savefig("PRC_regressor_whole_subset_border" + str(border_length) + ".png", dpi=300, format="png")
+plt.savefig("PRC_neural_network_baseline_regressor_whole_subset_border" + str(border_length) + ".png", dpi=300, format="png")
 plt.clf()
 plt.close()
 
 # --------- PRC validation set ------------
-y_scores_regressor = rf_regressor.predict(X_test)
+y_scores_regressor = model.predict(X_test)
 y_true_regressor = [1 if val > 0 else 0 for val in y_test]
 
 precision, recall, _ = precision_recall_curve(y_true_regressor, y_scores_regressor)
@@ -132,19 +141,12 @@ plt.ylim([0.0, 1.05])
 plt.xlim([0.0, 1.0])
 plt.title('Precision-Recall curve\navg precision: {:.4f}'.format(avg_precision_value_regressor_validation))
 #plt.show()
-plt.savefig("PRC_regressor_validation_border" + str(border_length) + ".png", dpi=300, format="png")
+plt.savefig("PRC_neural_network_regressor_validation_border" + str(border_length) + ".png", dpi=300, format="png")
 plt.clf()
 plt.close()
 
-final_header = ["AUPRC whole dataset","AUPRC validation set", "border"]
+final_header = ["AUPRC_neural_network_regressor","AUPRC_neural_network_validation", "border"]
 final_values = [avg_precision_value_regressor, avg_precision_value_regressor_validation, border_length]
 
 final_df = pd.DataFrame([final_values], columns=final_header)
-final_df.to_csv("results.tsv", sep="\t", index=False)
-
-explainer_shap = shap.TreeExplainer(rf_regressor)
-shap_values = explainer_shap.shap_values(X_shapes)
-shap.summary_plot(shap_values, X_shapes, show=False, max_display=5)
-plt.savefig("shap_values.png", dpi=300, format="png", bbox_inches="tight")
-plt.clf()
-plt.close()
+final_df.to_csv("results_neural_network_baseline.tsv", sep="\t", index=False)

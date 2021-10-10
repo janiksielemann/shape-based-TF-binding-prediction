@@ -30,6 +30,13 @@ for line in genome:
 		currentSequence += line.strip()
 dic_genome[currentChromosome] = currentSequence #write the last sequence in dictionary
 
+#give correct key names
+dic_genome["chr1"] = dic_genome.pop("1")
+dic_genome["chr2"] = dic_genome.pop("2")
+dic_genome["chr3"] = dic_genome.pop("3")
+dic_genome["chr4"] = dic_genome.pop("4")
+dic_genome["chr5"] = dic_genome.pop("5")
+
 # generate list of shapes
 all_shapes = ['Stagger', 'Rise', 'Opening', 'Buckle', 'MGW', 'Tilt', 'HelT', 'Roll', 'Shear', 'Slide', 'Stretch', 'ProT', 'Shift']
 
@@ -85,7 +92,7 @@ for index, row in whole_fimo.iterrows():
   temp_dict[index] = values
 
   if (index+1)%100 == 0:
-    print(str(index+1) + "/" + str(len(whole_fimo)) + " shapes have been calculated")
+    print(str(index+1) + "/" + str(whole_fimo.index.max()) + " shapes have been calculated")
 
 # generate shape df
 shapes_df = pd.DataFrame.from_dict(temp_dict, orient = "index")

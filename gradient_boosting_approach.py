@@ -1,16 +1,20 @@
+import matplotlib
+# set non interactive backend so that qsub works
+matplotlib.use('Agg')
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import shap
 
+from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import average_precision_score
 from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import plot_precision_recall_curve
 from sklearn.metrics import mean_squared_error
-from sklearn.ensemble import RandomForestRegressor
 from joblib import dump
 from argparse import ArgumentParser
+
 
 input_ = ArgumentParser()
 input_.add_argument("-b", dest = "border", type = int, default = 4)
@@ -20,8 +24,6 @@ args = input_.parse_args()
 all_shapes = ['Stagger', 'Rise', 'Opening', 'Buckle', 'MGW', 'Tilt', 'HelT', 'Roll', 'Shear', 'Slide', 'Stretch', 'ProT', 'Shift']
 
 border_length = args.border
-
-print("-- shape values of core motif and " + str(border_length) + " positions upstream and downstream will be considered for training --")
 
 #----- read fimo and peak data, check whether dimer or not, generate learning set ---------
 fimo_tsv_file_without_dimer = "fimo_without_dimer_hits.tsv"
@@ -42,9 +44,6 @@ else:
 
 # remove chloroplast and mitochondrai data
 whole_fimo = whole_fimo.drop(whole_fimo[(whole_fimo["sequence_name"]=="chloroplast") | (whole_fimo["sequence_name"]=="mitochondria")].index)
-
-# chromosome names to lowercase
-whole_fimo["sequence_name"] = whole_fimo["sequence_name"].str.lower()
 
 # generate whole set
 shape_fimo = pd.read_csv("shape_fimo_forward.csv")
@@ -84,24 +83,15 @@ sample_weight_bound = len(processed_shape_fimo.query("binding == 0")) / len(proc
 print("the bound sample weight is", sample_weight_bound)
 sample_weight = np.array([1 if val == 0 else sample_weight_bound for val in y_train])
 
-rf = RandomForestRegressor(random_state=42)
 
-param_distribs = {
-        'n_estimators': range(10,200,10),
-        'max_features': ['auto', 'sqrt', 'log2'],
-        'max_depth': range(4,12)
-    }
+boosting_regressor = GradientBoostingRegressor(random_state=42)
 
-rnd_search = RandomizedSearchCV(rf, param_distributions=param_distribs, n_iter=75, cv=5, scoring='neg_mean_squared_error', verbose=2, random_state=42)
+boosting_regressor.fit(X_train, y_train, sample_weight = sample_weight)
 
-rnd_search.fit(X_train, y_train, sample_weight = sample_weight)
-
-rf_regressor = rnd_search.best_estimator_
-
-dump(rf_regressor, "rf_regressor.joblib")
+dump(boosting_regressor, "boosting_regressor.joblib")
 
 # --------- PRC whole subset ------------
-y_scores_regressor = rf_regressor.predict(X_shapes)
+y_scores_regressor = boosting_regressor.predict(X_shapes)
 y_true_regressor = processed_shape_fimo["binding"]
 
 precision, recall, _ = precision_recall_curve(y_true_regressor, y_scores_regressor)
@@ -114,12 +104,12 @@ plt.ylim([0.0, 1.05])
 plt.xlim([0.0, 1.0])
 plt.title('Precision-Recall curve\navg precision: {:.4f}'.format(avg_precision_value_regressor))
 #plt.show()
-plt.savefig("PRC_regressor_whole_subset_border" + str(border_length) + ".png", dpi=300, format="png")
+plt.savefig("PRC_boosting_regressor_whole_subset_border" + str(border_length) + ".png", dpi=300, format="png")
 plt.clf()
 plt.close()
 
 # --------- PRC validation set ------------
-y_scores_regressor = rf_regressor.predict(X_test)
+y_scores_regressor = boosting_regressor.predict(X_test)
 y_true_regressor = [1 if val > 0 else 0 for val in y_test]
 
 precision, recall, _ = precision_recall_curve(y_true_regressor, y_scores_regressor)
@@ -132,19 +122,12 @@ plt.ylim([0.0, 1.05])
 plt.xlim([0.0, 1.0])
 plt.title('Precision-Recall curve\navg precision: {:.4f}'.format(avg_precision_value_regressor_validation))
 #plt.show()
-plt.savefig("PRC_regressor_validation_border" + str(border_length) + ".png", dpi=300, format="png")
+plt.savefig("PRC_boosting_regressor_validation_border" + str(border_length) + ".png", dpi=300, format="png")
 plt.clf()
 plt.close()
 
-final_header = ["AUPRC whole dataset","AUPRC validation set", "border"]
+final_header = ["AUPRC_boosting_regressor","AUPRC_boosting_validation", "border"]
 final_values = [avg_precision_value_regressor, avg_precision_value_regressor_validation, border_length]
 
 final_df = pd.DataFrame([final_values], columns=final_header)
-final_df.to_csv("results.tsv", sep="\t", index=False)
-
-explainer_shap = shap.TreeExplainer(rf_regressor)
-shap_values = explainer_shap.shap_values(X_shapes)
-shap.summary_plot(shap_values, X_shapes, show=False, max_display=5)
-plt.savefig("shap_values.png", dpi=300, format="png", bbox_inches="tight")
-plt.clf()
-plt.close()
+final_df.to_csv("results_boosting_forward.tsv", sep="\t", index=False)
